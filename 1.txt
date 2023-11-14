@@ -141,10 +141,12 @@ class _NewReportScreenState extends State<NewReportScreen> {
   }
 
   Future<void> createTable(Database database) async {
-    await database.execute(
-      'CREATE TABLE IF NOT EXISTS Reports(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, description TEXT, '
-      'latitude REAL, longitude REAL, timestamp DATETIME, image_path TEXT)',
-    );
+    await database.transaction((txn) async {
+      await txn.execute(
+        'CREATE TABLE IF NOT EXISTS Reports(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, description TEXT, '
+        'latitude REAL, longitude REAL, timestamp DATETIME, image_path TEXT)',
+      );
+    });
   }
 
   Future<void> _getImage() async {
@@ -178,11 +180,19 @@ class ReportListScreen extends StatelessWidget {
           return ListView.builder(
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
+              final report = snapshot.data![index];
+
               return ListTile(
-                title: Text(snapshot.data![index]['description']),
-                subtitle: Text(snapshot.data![index]['timestamp']),
+                title: Text(report['description']),
+                subtitle: Text(report['timestamp']),
                 onTap: () {
-                  // Implementa la navegación a la pantalla de detalles del reporte si es necesario
+                  // Navegar a la pantalla de detalles con los detalles del reporte
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReportDetailScreen(report: report),
+                    ),
+                  );
                 },
               );
             },
@@ -204,11 +214,42 @@ class ReportListScreen extends StatelessWidget {
   }
 
   Future<void> createTable(Database database) async {
-  await database.transaction((txn) async {
-    await txn.execute(
-      'CREATE TABLE IF NOT EXISTS Reports(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, description TEXT, '
-      'latitude REAL, longitude REAL, timestamp DATETIME, image_path TEXT)',
+    await database.transaction((txn) async {
+      await txn.execute(
+        'CREATE TABLE IF NOT EXISTS Reports(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, description TEXT, '
+        'latitude REAL, longitude REAL, timestamp DATETIME, image_path TEXT)',
+      );
+    });
+  }
+}
+
+class ReportDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> report;
+
+  const ReportDetailScreen({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Detalles del Reporte'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Descripción: ${report['description']}'),
+            Text('Latitud: ${report['latitude']}'),
+            Text('Longitud: ${report['longitude']}'),
+            Text('Fecha y Hora: ${report['timestamp']}'),
+            // Puedes mostrar la imagen aquí si se ha adjuntado
+            if (report['image_path'] != null)
+              Image.file(File(report['image_path'])),
+          ],
+        ),
+      ),
     );
-  });
+  }
 }
-}
+
